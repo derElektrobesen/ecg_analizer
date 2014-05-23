@@ -1,0 +1,10 @@
+*.swp
+*~
+~.*
+*.map
+sample
+build
+*.htm
+*.html
+*.uvgui.*
+*.bak
