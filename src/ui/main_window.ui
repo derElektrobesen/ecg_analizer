@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ECG analizer</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="EcgGraphWrapper" name="groupBox_2">
+      <property name="styleSheet">
+       <string notr="true">QGroupBox {
+   border: 1px solid gray;
+   border-radius: 3px;
+   margin-top: 15px;
+   padding: 4px;
+}
+
+QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top left; 
+   padding: 4px;
+   left: 20px;
+ }</string>
+      </property>
+      <property name="title">
+       <string>Etalon ECG</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="EcgGraph" name="ecg_graph_etalon" native="true"/>
+       </item>
+       <item>
+        <widget class="NavBar" name="widget" native="true">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>25</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="EcgGraphWrapper" name="groupBox">
+      <property name="styleSheet">
+       <string notr="true">QGroupBox {
+   border: 1px solid gray;
+   border-radius: 3px;
+   margin-top: 15px;
+   padding: 4px;
+}
+
+QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top left; 
+   padding: 4px;
+   left: 20px;
+ }</string>
+      </property>
+      <property name="title">
+       <string>Real ECG</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="EcgGraph" name="ecg_graph_real" native="true"/>
+       </item>
+       <item>
+        <widget class="NavBar" name="widget_2" native="true">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>25</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen_ecg"/>
+    <addaction name="separator"/>
+    <addaction name="act_exit"/>
+   </widget>
+   <widget class="QMenu" name="etalon_menu">
+    <property name="title">
+     <string>Etalon ECG</string>
+    </property>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="etalon_menu"/>
+  </widget>
+  <action name="actionOpen_ethalon">
+   <property name="text">
+    <string>Open etalon ECG</string>
+   </property>
+  </action>
+  <action name="actionOpen_ecg">
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Open ECG</string>
+   </property>
+  </action>
+  <action name="act_exit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionChild">
+   <property name="text">
+    <string>Child</string>
+   </property>
+  </action>
+  <action name="actionAdult">
+   <property name="text">
+    <string>Adult</string>
+   </property>
+  </action>
+  <action name="actionOld_man">
+   <property name="text">
+    <string>Old man</string>
+   </property>
+  </action>
+  <action name="act_import_ecg">
+   <property name="text">
+    <string>Import etalon ECG</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>EcgGraph</class>
+   <extends>QWidget</extends>
+   <header>.ecggraph</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>NavBar</class>
+   <extends>QWidget</extends>
+   <header>.ecggraph</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>EcgGraphWrapper</class>
+   <extends>QGroupBox</extends>
+   <header>.ecggraph</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>act_exit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
