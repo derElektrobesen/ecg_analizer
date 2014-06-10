@@ -7,6 +7,8 @@ from .config import Config, DBUser
 from PyQt4.QtGui import QMainWindow, QFileDialog, QDialog, QMessageBox, QAction, QActionGroup
 from PyQt4.QtCore import *
 
+from algo import *
+
 class ImportDialog(Ui_ImportDialog, QDialog):
     def __init__(self, parent = None, callback = None):
         QDialog.__init__(self, parent)
@@ -109,7 +111,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.act_import_ecg = QAction(self)
         self.act_import_ecg.setObjectName("act_import_ecg")
         self.etalon_menu.addAction(self.act_import_ecg)
-        self.act_import_ecg.setText("Import etalon ECG")
+        self.act_import_ecg.setText("Import ECG")
         QObject.connect(self.act_import_ecg, SIGNAL("triggered()"), self.on_act_import_ecg_triggered)
         QObject.connect(self.acts_group, SIGNAL("triggered(QAction*)"), self.on_etalon_changed)
         if first_act:
@@ -120,6 +122,15 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.__checked_etalon = act.text()
         self.load_etalon_data(act.text())
         self.ecg_graph_etalon.set_graph(self.__etalons_data[act.text()]['data'])
+        self.count_graph(act.text())
+
+    def count_graph(self, gr_text):
+        data = self.__etalons_data[gr_text]
+        if 'counted' not in data:
+            gr = data['data']
+            new_y = band_filter(tuple(gr[1]))
+            data['counted'] = [gr[0], new_y]
+        self.ecg_graph_real.set_graph(data['counted'])
 
     def load_etalon_data(self, name):
         if not self.__etalons_data[name]['data']:

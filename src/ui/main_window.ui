@@ -33,7 +33,7 @@ QGroupBox::title {
  }</string>
       </property>
       <property name="title">
-       <string>Etalon ECG</string>
+       <string>Real ECG</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
@@ -70,7 +70,7 @@ QGroupBox::title {
  }</string>
       </property>
       <property name="title">
-       <string>Real ECG</string>
+       <string>Smoothed ECG</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
@@ -110,7 +110,7 @@ QGroupBox::title {
    </widget>
    <widget class="QMenu" name="etalon_menu">
     <property name="title">
-     <string>Etalon ECG</string>
+     <string>ECG Database</string>
     </property>
    </widget>
    <addaction name="menuFile"/>

@@ -24,8 +24,11 @@ class EcgGraph(FigureCanvas):
         plt = self.__axes
         plt.cla()
         plt.plot(*graph)
-        self.__fig.subplots_adjust(left=0.07, right=0.95, top=0.9, bottom=0.1)
+        self.__fig.subplots_adjust(left=0.07, right=0.95, top=0.9, bottom=0.2)
         plt.set_xlim(graph[0][0], graph[0][-1])
+
+        self.__axes.set_xlabel("Time, Sec")
+        self.__axes.set_ylabel("Amplitude, mV")
         self.draw()
 
     def get_canvas(self):

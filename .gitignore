@@ -1,7 +1,10 @@
 *.bak
 *~
 *.swp
+*.swo
 .*.swp
+*.o
+*.so
 __pycache__
 src/*_ui.py
 data
