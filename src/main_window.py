@@ -128,8 +128,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         data = self.__etalons_data[gr_text]
         if 'counted' not in data:
             gr = data['data']
-            new_y = band_filter(tuple(gr[1]))
-            data['counted'] = [gr[0], new_y]
+            data['counted'] = band_filter(gr)
         self.ecg_graph_real.set_graph(data['counted'])
 
     def load_etalon_data(self, name):
@@ -138,8 +137,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             q.prepare("SELECT x, y FROM data WHERE etalons_id = ?")
             q.bindValue(0, self.__etalons_data[name]['id'])
             q.exec_()
-            data = [[], []]
+            data = ([], [])
             while q.next():
                 data[0].append(q.value(0))
                 data[1].append(q.value(1))
-            self.__etalons_data[name]['data'] = data
+            self.__etalons_data[name]['data'] = (tuple(data[0]), tuple(data[1]))

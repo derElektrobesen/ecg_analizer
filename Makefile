@@ -7,7 +7,7 @@ UI_FILES = main_window import_dialog
 C_SRC = algo algo_ex algo_main
 LIB_NAME = algo
 
-CFLAGS = -DLIB_NAME="\"$(LIB_NAME)\"" -lpython3 -Wall
+CFLAGS = -DLIB_NAME="\"$(LIB_NAME)\"" -lpython3 -Wall -Werror -fmax-errors=5
 LIB_POSTFIX =
 CC =
 PY_LIB_DIR =
