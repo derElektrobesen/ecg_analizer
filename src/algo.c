@@ -11,16 +11,22 @@
 #define t_set_t(__arr__, __index__, __val__) \
     PyTuple_SetItem(__arr__, __index__, Py_BuildValue("O", __val__))
 
+#define st_arr_l(__arr__) \
+    sizeof(__arr__) / sizeof(*__arr__)
+
 inline static PyObject *err_str(const char *msg) {
     raise_exception(msg);
     return NULL;
 }
 
 static short band_filters_impl(PyObject *x_data, PyObject *y_data, PyObject *y_dest, Py_ssize_t size) {
-    double x_cache[12], y_cache[3] = { 0, 0, 0 };
+    double x_cache[13], y_cache[3] = { 0, 0, 0 };
     double x, y, ry;
     int x_cache_offset = 0;
     Py_ssize_t i;
+
+    if (size < st_arr_l(x_cache))
+        return 0;
 
 #define scroll(__index__) ({ \
         x_cache[ __index__ + x_cache_offset >= sizeof(x_cache) / sizeof(*x_cache) \
@@ -32,22 +38,21 @@ static short band_filters_impl(PyObject *x_data, PyObject *y_data, PyObject *y_d
         PyArg_Parse(PyTuple_GetItem(x_data, i), "d", &x);
         PyArg_Parse(PyTuple_GetItem(y_data, i), "d", &y);
 
-        if (i >= sizeof(x_cache) / sizeof(*x_cache) - sizeof(y_cache) / sizeof(*y_cache)) {
+        if (i >= st_arr_l(x_cache) - st_arr_l(y_cache)) {
             y_cache[0] = y_cache[1];
             y_cache[1] = y_cache[2];
             y_cache[2] = y;
         }
 
-        if (i < sizeof(x_cache) / sizeof(*x_cache)) {
+        if (i < st_arr_l(x_cache)) {
             x_cache[i] = x;
             ry = y;
         } else {
             /* ry == 2 * y[i - 1] - y[i - 2] + 1/32 * (x[i] - 2 * x[i - 6] + x[i - 12] */
             ry = 2 * y_cache[1] - y_cache[0];
             ry += (x - 2 * scroll(6) + scroll(12)) / 32.0;
-            x_cache_offset++;
-            if (x_cache_offset > sizeof(x_cache) / sizeof(*x_cache))
-                x_cache_offset -= sizeof(x_cache) / sizeof(*x_cache);
+            if (++x_cache_offset > st_arr_l(x_cache))
+                x_cache_offset -= st_arr_l(x_cache);
         }
 
         t_set_f(y_dest, i, ry);
