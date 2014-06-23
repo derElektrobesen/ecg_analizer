@@ -19,7 +19,7 @@ inline static PyObject *err_str(const char *msg) {
     return NULL;
 }
 
-static short band_filters_impl(PyObject *x_data, PyObject *y_data, PyObject *y_dest, Py_ssize_t size) {
+static short band_filters_impl(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) {
     double x_cache[13], y_cache[3] = { 0, 0, 0 };
     double x, y, ry;
     int x_cache_offset = 0;
@@ -29,8 +29,8 @@ static short band_filters_impl(PyObject *x_data, PyObject *y_data, PyObject *y_d
         return 0;
 
 #define scroll(__index__) ({ \
-        x_cache[ __index__ + x_cache_offset >= sizeof(x_cache) / sizeof(*x_cache) \
-                    ? __index__ + x_cache_offset - sizeof(x_cache) / sizeof(*x_cache) \
+        x_cache[ __index__ + x_cache_offset >= st_arr_l(x_cache) \
+                    ? __index__ + x_cache_offset - st_arr_l(x_cache) \
                     : __index__ + x_cache_offset ]; \
     })
 
@@ -90,7 +90,7 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
     if (!ry)
         return err_str("Error allocating memory");
 
-    if (band_filters_impl(x, y, ry, size)) {
+    if (band_filters_impl(y, ry, size)) {
         result = PyTuple_New(2);
         if (!result)
             return err_str("Error allocating memory");

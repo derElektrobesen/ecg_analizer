@@ -19,7 +19,7 @@ class Config:
 
     @staticmethod
     def diagram_step():
-        return 0.1
+        return 0.002
 
 class MySQL:
     def __init__(self):
