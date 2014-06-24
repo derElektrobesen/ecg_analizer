@@ -1,18 +1,20 @@
 #include "algo.h"
 
-#define _STR(__arg__) # __arg__
-#define STR(__arg__) _SSTR(__arg__)
-
 #define st_arr_l(__arr__) \
     sizeof(__arr__) / sizeof(*__arr__)
 
 #define EXP 10
+
+//#define USE_ALL_FILTERS
+#define USE_LO_FILTER
+//#define USE_HI_FILTER
 
 inline static PyObject *err_str(const char *msg) {
     raise_exception(msg);
     return NULL;
 }
 
+#if defined USE_ALL_FILTERS || defined USE_HI_FILTER
 static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) {
     float x[] = { 0.0f, 0.0f };
     float y[] = { 0.0f, 0.0f };
@@ -25,15 +27,12 @@ static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) 
         { 0.0f,      1.0f,     1.0f,     1.0f,     1.0f     }
     };
 
-    int iters = EXP / 2;
-
     Py_ssize_t i;
     int j;
-    float yi;
+    float yi, ry;
 
-    for (j = 0; j < iters; j++) {
+    for (j = 0; j < EXP / 2; j++) {
         for (i = 0; i < size; i++) {
-            float ry = 0;
             yi = j ? dst[i] : src[i];
             ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
             dst[i] = ry;
@@ -45,7 +44,9 @@ static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) 
         }
     }
 }
+#endif /* defined USE_ALL_FILTERS || defined USE_HI_FILTER */
 
+#if defined USE_ALL_FILTERS || defined USE_LO_FILTER
 static void band_filters_impl_lo(const float *src, float *dst, Py_ssize_t size) {
     float x[] = { 0.0f, 0.0f };
     float y[] = { 0.0f, 0.0f };
@@ -58,15 +59,12 @@ static void band_filters_impl_lo(const float *src, float *dst, Py_ssize_t size) 
         {  0.741f,  0.397f,  0.196f,  0.083f,  0.031f }
     };
 
-    int iters = EXP / 2;
-
     Py_ssize_t i;
     int j;
-    float yi;
+    float yi, ry;
 
-    for (j = 0; j < iters; j++) {
+    for (j = 0; j < EXP / 2; j++) {
         for (i = 0; i < size; i++) {
-            float ry = 0;
             yi = j ? dst[i] : src[i];
             ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
             dst[i] = ry;
@@ -78,6 +76,7 @@ static void band_filters_impl_lo(const float *src, float *dst, Py_ssize_t size) 
         }
     }
 }
+#endif /* defined USE_ALL_FILTERS || defined USE_LO_FILTER */
 
 PyObject *band_filter(PyObject *self, PyObject *args) {
     PyObject *data, *result = NULL;
@@ -115,13 +114,24 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
     for (; i < size; i++)
         PyArg_Parse(PyTuple_GET_ITEM(y, i), "f", xvec + i);
 
+#if defined USE_ALL_FILTERS || defined USE_LO_FILTER
     band_filters_impl_lo(xvec, yvec, size);
+#endif
+#if defined USE_ALL_FILTERS
     band_filters_impl_hi(yvec, xvec, size);
+#elif defined USE_HI_FILTER
+    band_filters_impl_hi(xvec, yvec, size);
+#endif
 
     result = PyTuple_New(2);
     if (result) {
-        for (i = 0; i < size; i++)
+        for (i = 0; i < size; i++) {
+#ifndef USE_HI_FILTER
             PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", xvec[i]));
+#else
+            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", yvec[i]));
+#endif
+        }
         PyTuple_SET_ITEM(result, 0, Py_BuildValue("O", x));
         PyTuple_SET_ITEM(result, 1, Py_BuildValue("O", ry));
     } else
