@@ -3,23 +3,17 @@
 #define _STR(__arg__) # __arg__
 #define STR(__arg__) _SSTR(__arg__)
 
-#define DEBUG \
-    return err_str("Debug line: " STR(__LINE__))
-
-#define t_set_f(__arr__, __index__, __val__) \
-    PyTuple_SetItem(__arr__, __index__, Py_BuildValue("f", __val__))
-#define t_set_t(__arr__, __index__, __val__) \
-    PyTuple_SetItem(__arr__, __index__, Py_BuildValue("O", __val__))
-
 #define st_arr_l(__arr__) \
     sizeof(__arr__) / sizeof(*__arr__)
+
+#define EXP 10
 
 inline static PyObject *err_str(const char *msg) {
     raise_exception(msg);
     return NULL;
 }
 
-short band_filters_impl_hi(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) {
+static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) {
     float x[] = { 0.0f, 0.0f };
     float y[] = { 0.0f, 0.0f };
 
@@ -31,33 +25,18 @@ short band_filters_impl_hi(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) 
         { 0.0f,      1.0f,     1.0f,     1.0f,     1.0f     }
     };
 
-    int exp = 10;
-    int iters = exp / 2;
-    //int iters = 1;
+    int iters = EXP / 2;
 
     Py_ssize_t i;
     int j;
     float yi;
 
-    float *xvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
-    if (!xvec)
-        return 0;
-
     for (j = 0; j < iters; j++) {
         for (i = 0; i < size; i++) {
             float ry = 0;
-
-            if (!j)
-                PyArg_Parse(PyTuple_GET_ITEM(y_data, i), "f", &yi);
-            else
-                yi = xvec[i];
-
+            yi = j ? dst[i] : src[i];
             ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
-
-            if (j == iters - 1)
-                PyTuple_SET_ITEM(y_dest, i, Py_BuildValue("f", ry));
-            else
-                xvec[i] = ry;
+            dst[i] = ry;
 
             x[1] = x[0];
             x[0] = yi;
@@ -65,13 +44,9 @@ short band_filters_impl_hi(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) 
             y[0] = ry;
         }
     }
-
-    PyMem_RawFree(xvec);
-
-    return 1;
 }
 
-short band_filters_impl_lo(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) {
+static void band_filters_impl_lo(const float *src, float *dst, Py_ssize_t size) {
     float x[] = { 0.0f, 0.0f };
     float y[] = { 0.0f, 0.0f };
 
@@ -83,33 +58,18 @@ short band_filters_impl_lo(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) 
         {  0.741f,  0.397f,  0.196f,  0.083f,  0.031f }
     };
 
-    int exp = 10;
-    int iters = exp / 2;
-    //int iters = 1;
+    int iters = EXP / 2;
 
     Py_ssize_t i;
     int j;
     float yi;
 
-    float *xvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
-    if (!xvec)
-        return 0;
-
     for (j = 0; j < iters; j++) {
         for (i = 0; i < size; i++) {
             float ry = 0;
-
-            if (!j)
-                PyArg_Parse(PyTuple_GET_ITEM(y_data, i), "f", &yi);
-            else
-                yi = xvec[i];
-
+            yi = j ? dst[i] : src[i];
             ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
-
-            if (j == iters - 1)
-                PyTuple_SET_ITEM(y_dest, i, Py_BuildValue("f", ry));
-            else
-                xvec[i] = ry;
+            dst[i] = ry;
 
             x[1] = x[0];
             x[0] = yi;
@@ -117,10 +77,6 @@ short band_filters_impl_lo(PyObject *y_data, PyObject *y_dest, Py_ssize_t size) 
             y[0] = ry;
         }
     }
-
-    PyMem_RawFree(xvec);
-
-    return 1;
 }
 
 PyObject *band_filter(PyObject *self, PyObject *args) {
@@ -151,16 +107,27 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
         return err_str("Error allocating memory");
 
     float *xvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
+    float *yvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
     if (!xvec)
-        return 0;
+        return err_str("Error allocating memory");
 
-    if (band_filters_impl_hi(y, ry, size)) {
-        result = PyTuple_New(2);
-        if (!result)
-            return err_str("Error allocating memory");
-        t_set_t(result, 0, x);
-        t_set_t(result, 1, ry);
-    }
+    Py_ssize_t i = 0;
+    for (; i < size; i++)
+        PyArg_Parse(PyTuple_GET_ITEM(y, i), "f", xvec + i);
+
+    band_filters_impl_lo(xvec, yvec, size);
+    band_filters_impl_hi(yvec, xvec, size);
+
+    result = PyTuple_New(2);
+    if (result) {
+        for (i = 0; i < size; i++)
+            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", xvec[i]));
+        PyTuple_SET_ITEM(result, 0, Py_BuildValue("O", x));
+        PyTuple_SET_ITEM(result, 1, Py_BuildValue("O", ry));
+    } else
+        err_str("Error allocating memory");
+
     PyMem_RawFree(xvec);
+    PyMem_RawFree(yvec);
     return result;
 }
