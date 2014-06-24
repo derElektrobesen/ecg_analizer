@@ -107,8 +107,10 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
 
     float *xvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
     float *yvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
-    if (!xvec)
+    if (!xvec || !yvec) {
+        PyMem_RawFree(xvec ?: yvec);
         return err_str("Error allocating memory");
+    }
 
     Py_ssize_t i = 0;
     for (; i < size; i++)
