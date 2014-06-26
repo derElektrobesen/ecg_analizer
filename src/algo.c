@@ -5,8 +5,8 @@
 
 #define EXP 10
 
-//#define USE_ALL_FILTERS
-#define USE_LO_FILTER
+#define USE_ALL_FILTERS
+//#define USE_LO_FILTER
 //#define USE_HI_FILTER
 
 inline static PyObject *err_str(const char *msg) {
@@ -20,11 +20,18 @@ static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) 
     float y[] = { 0.0f, 0.0f };
 
     float coefs[5][5] = {
+        /*
         { -6.057e-5, 1.973e-8, 4.909e-8, 8.132e-9, 1.227e-9 },
         { -6.057e-5, 3.946e-8, 9.818e-8, 1.626e-8, 2.455e-9 },
         { 0.0f,      1.973e-8, 4.909e-8, 8.132e-9, 1.227e-9 },
         { -1.0f,    -2.0f,    -2.0f,    -2.0f,    -2.0f     },
         { 0.0f,      1.0f,     1.0f,     1.0f,     1.0f     }
+        */
+        { 9.869e-8, 9.867e-8, 9.865e-8, 9.865e-8, 9.863e-8 },
+        { 1.974e-7, 1.973e-7, 1.973e-7, 1.973e-7, 1.973e-7 },
+        { 9.869e-8, 9.867e-8, 9.865e-8, 9.864e-8, 9.863e-8 },
+        { -2.0f,    -2.0f,    -2.0f,    -2.0f,    -2.0f    },
+        { 1.0f,     1.0f,     1.0f,     1.0f,     1.0f     }
     };
 
     Py_ssize_t i;
