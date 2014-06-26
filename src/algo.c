@@ -5,13 +5,39 @@
 
 #define EXP 10
 
-#define USE_ALL_FILTERS
-//#define USE_LO_FILTER
+//#define USE_ALL_FILTERS
+#define USE_LO_FILTER
 //#define USE_HI_FILTER
 
 inline static PyObject *err_str(const char *msg) {
     raise_exception(msg);
     return NULL;
+}
+
+static void differ_n_sqr(float *signal, Py_ssize_t size, float dx) {
+    Py_ssize_t i = 1;
+    float last_val = *signal;
+    for (; i < size; i++) {
+        float tmp = signal[i];
+        signal[i] = (signal[i] - last_val) / dx;
+        signal[i] *= signal[i];
+        last_val = tmp;
+    }
+}
+
+static void integrate(float *signal, Py_ssize_t size, float dx) {
+    Py_ssize_t i;
+    int step = 4;
+    int j = 0;
+    dx *= step;
+    double sum = *signal;
+    for (i = 0; i < size; i += step) {
+        if (i + step > size)
+            step = size - i;
+        sum = (signal[i] + signal[i + step]) * dx * 0.5f;
+        for (j = 0; j < step; j++)
+            signal[i + j] = sum;
+    }
 }
 
 #if defined USE_ALL_FILTERS || defined USE_HI_FILTER
@@ -123,6 +149,8 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
     for (; i < size; i++)
         PyArg_Parse(PyTuple_GET_ITEM(y, i), "f", xvec + i);
 
+    float *ptr = yvec;
+
 #if defined USE_ALL_FILTERS || defined USE_LO_FILTER
     band_filters_impl_lo(xvec, yvec, size);
 #endif
@@ -130,16 +158,21 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
     band_filters_impl_hi(yvec, xvec, size);
 #elif defined USE_HI_FILTER
     band_filters_impl_hi(xvec, yvec, size);
+    ptr = xvec;
 #endif
+
+    float dx, tmp;
+    PyArg_Parse(PyTuple_GET_ITEM(x, 0), "f", &dx);
+    PyArg_Parse(PyTuple_GET_ITEM(x, 1), "f", &tmp);
+    dx = tmp - dx;
+
+    differ_n_sqr(ptr, size, dx);
+    integrate(ptr, size, dx);
 
     result = PyTuple_New(2);
     if (result) {
         for (i = 0; i < size; i++) {
-#ifndef USE_HI_FILTER
-            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", xvec[i]));
-#else
-            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", yvec[i]));
-#endif
+            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", ptr[i]));
         }
         PyTuple_SET_ITEM(result, 0, Py_BuildValue("O", x));
         PyTuple_SET_ITEM(result, 1, Py_BuildValue("O", ry));
