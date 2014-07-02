@@ -44,7 +44,6 @@ class EcgGraph(FigureCanvas):
 
         points = []
         d_coords = []
-        distances = []
 
         last_x = -1
         off = -1
@@ -53,7 +52,6 @@ class EcgGraph(FigureCanvas):
             if last_x < 0:
                 last_x = self.__data[0][pnt]
             else:
-                distances.append(self.__data[0][pnt] - last_x)
                 if off == -1:
                     off = (self.__data[0][pnt] - last_x) / 2.0
                 d_coords.append((last_x + off, 0))
@@ -68,9 +66,20 @@ class EcgGraph(FigureCanvas):
         b.setColor(Qt.white)
         b.setStyle(Qt.SolidPattern)
         painter.setBrush(b)
-        for pnt in range(len(points)):
+        
+        bottom = ptr.transform([0,0])
+        last_x = bottom[0]
+        last_xx = 0
+        for pnt in range(len(points) - 1):
             tmp = ptr.transform(points[pnt])
             painter.drawEllipse(tmp[0] - r / 2, h - tmp[1] - r / 2, r, r)
+            name = "%1.2e" % points[pnt][1]
+            painter.drawText(tmp[0], h - tmp[1], name)
+
+            if last_xx != 0:
+                painter.drawText(last_x + (tmp[0] - last_x) / 2 - 10, h - bottom[1], "%1.2f" % (points[pnt][0] - last_xx))
+            last_x = tmp[0]
+            last_xx = points[pnt][0]
         return
         for pnt in range(len(d_coords)):
             d_coords[pnt] = self.__axes.transAxes.inverted().transform(d_coords[pnt])

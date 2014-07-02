@@ -4,8 +4,8 @@
     sizeof(__arr__) / sizeof(*__arr__)
 
 #define EXP 10
-#define INTER_STEP 3
-
+#define INTER_STEP 15
+#define PT_INTERVAL 1.0
 #define FILTER_C_COUNT EXP / 2
 
 inline static PyObject *err_str(const char *msg) {
@@ -44,21 +44,37 @@ inline static Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t siz
     return size / step + (i + step > size ? 1 : 0);
 }
 
-static Py_ssize_t search_r_r(const float *signal, PyObject *dest, Py_ssize_t size) {
-    Py_ssize_t i = 0, j = 0;
-    float peak = -FLT_MAX;
-    for (; i < size; i++) {
-        if (signal[i] > peak)
-            peak = signal[i];
-        else if (signal[i] > 0.9e12) { /* O_o */
-            PyTuple_SET_ITEM(dest, j++, Py_BuildValue("i", i - 1));
-            peak = -FLT_MAX;
+inline static int search_max(const float *start_ptr, const float *end_ptr) {
+    float max = *start_ptr;
+    int index = 0;
+    int i = 0;
+    while (++start_ptr < end_ptr) {
+        if (max < *start_ptr) {
+            max = *start_ptr;
+            index = i + 1;
         }
+        i++;
+    }
+    return index;
+}
+
+static Py_ssize_t search_r_r(const float *signal, PyObject *dest, Py_ssize_t size, int offset) {
+    Py_ssize_t j = 0, i = 0;
+
+    const float *e_ptr = signal + size;
+    while (signal < e_ptr) {
+        if (signal + offset > e_ptr)
+            offset = (int)(e_ptr - signal);
+        int l_max = search_max(signal, signal + offset);
+        signal += offset;
+
+        PyTuple_SET_ITEM(dest, j++, Py_BuildValue("i", l_max + i));
+        i += offset;
     }
     return j;
 }
 
-void band_filters_impl(const float *src, float *dst, Py_ssize_t size, float coefs[5][FILTER_C_COUNT]) {
+static void band_filters_impl(const float *src, float *dst, Py_ssize_t size, float coefs[5][FILTER_C_COUNT]) {
     Py_ssize_t i;
 
     float x[] = { 0.0f, 0.0f };
@@ -160,7 +176,12 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
     maximums = PyTuple_New(size);
     if (!maximums)
         return alloc_err();
-    Py_ssize_t count = search_r_r(y_ptr, maximums, size);
+
+    int offset = 0;
+    while (x_ptr[offset] - *x_ptr < PT_INTERVAL)
+        offset++;
+
+    Py_ssize_t count = search_r_r(y_ptr, maximums, size, offset);
     _PyTuple_Resize(&maximums, count);
 
     _PyTuple_Resize(&x, size);
