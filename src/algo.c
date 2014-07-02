@@ -4,18 +4,16 @@
     sizeof(__arr__) / sizeof(*__arr__)
 
 #define EXP 10
-#define INTER_STEP 4
+#define INTER_STEP 3
 
-//#define USE_ALL_FILTERS
-#define USE_LO_FILTER
-//#define USE_HI_FILTER
+#define FILTER_C_COUNT EXP / 2
 
 inline static PyObject *err_str(const char *msg) {
     raise_exception(msg);
     return NULL;
 }
 
-static void differ(float *signal, Py_ssize_t size, float dx) {
+inline static void differ(float *signal, Py_ssize_t size, float dx) {
     Py_ssize_t i = 1;
     float last_val = *signal;
     for (; i < size; i++) {
@@ -26,13 +24,13 @@ static void differ(float *signal, Py_ssize_t size, float dx) {
     *signal = signal[1];
 }
 
-static void sig_sqr(float *signal, Py_ssize_t size) {
+inline static void sig_sqr(float *signal, Py_ssize_t size) {
     Py_ssize_t i = 0;
     for (; i < size; i++, signal++)
         *signal *= *signal;
 }
 
-static Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t size, float dx) {
+inline static Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t size, float dx) {
     Py_ssize_t i;
     const int step = INTER_STEP;
     int st = step;
@@ -46,31 +44,30 @@ static Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t size, floa
     return size / step + (i + step > size ? 1 : 0);
 }
 
-#if defined USE_ALL_FILTERS || defined USE_HI_FILTER
-static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) {
+static Py_ssize_t search_r_r(const float *signal, PyObject *dest, Py_ssize_t size) {
+    Py_ssize_t i = 0, j = 0;
+    float peak = -FLT_MAX;
+    for (; i < size; i++) {
+        if (signal[i] > peak)
+            peak = signal[i];
+        else if (signal[i] > 0.9e12) { /* O_o */
+            PyTuple_SET_ITEM(dest, j++, Py_BuildValue("i", i - 1));
+            peak = -FLT_MAX;
+        }
+    }
+    return j;
+}
+
+void band_filters_impl(const float *src, float *dst, Py_ssize_t size, float coefs[5][FILTER_C_COUNT]) {
+    Py_ssize_t i;
+
     float x[] = { 0.0f, 0.0f };
     float y[] = { 0.0f, 0.0f };
 
-    float coefs[5][5] = {
-        /*
-        { -6.057e-5, 1.973e-8, 4.909e-8, 8.132e-9, 1.227e-9 },
-        { -6.057e-5, 3.946e-8, 9.818e-8, 1.626e-8, 2.455e-9 },
-        { 0.0f,      1.973e-8, 4.909e-8, 8.132e-9, 1.227e-9 },
-        { -1.0f,    -2.0f,    -2.0f,    -2.0f,    -2.0f     },
-        { 0.0f,      1.0f,     1.0f,     1.0f,     1.0f     }
-        */
-        { 9.869e-8, 9.867e-8, 9.865e-8, 9.865e-8, 9.863e-8 },
-        { 1.974e-7, 1.973e-7, 1.973e-7, 1.973e-7, 1.973e-7 },
-        { 9.869e-8, 9.867e-8, 9.865e-8, 9.864e-8, 9.863e-8 },
-        { -2.0f,    -2.0f,    -2.0f,    -2.0f,    -2.0f    },
-        { 1.0f,     1.0f,     1.0f,     1.0f,     1.0f     }
-    };
-
-    Py_ssize_t i;
-    int j;
     float yi, ry;
+    int j;
 
-    for (j = 0; j < EXP / 2; j++) {
+    for (j = 0; j < FILTER_C_COUNT; j++) {
         for (i = 0; i < size; i++) {
             yi = j ? dst[i] : src[i];
             ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
@@ -83,43 +80,14 @@ static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) 
         }
     }
 }
-#endif /* defined USE_ALL_FILTERS || defined USE_HI_FILTER */
 
-#if defined USE_ALL_FILTERS || defined USE_LO_FILTER
-static void band_filters_impl_lo(const float *src, float *dst, Py_ssize_t size) {
-    float x[] = { 0.0f, 0.0f };
-    float y[] = { 0.0f, 0.0f };
-
-    float coefs[5][5] = {
-        {  0.301f,  0.241f,  0.207f,  0.187f,  0.178f },
-        {  0.601f,  0.483f,  0.413f,  0.374f,  0.356f },
-        {  0.301f,  0.241f,  0.207f,  0.187f,  0.178f },
-        { -0.538f, -0.432f, -0.370f, -0.335f, -0.319f },
-        {  0.741f,  0.397f,  0.196f,  0.083f,  0.031f }
-    };
-
-    Py_ssize_t i;
-    int j;
-    float yi, ry;
-
-    for (j = 0; j < EXP / 2; j++) {
-        for (i = 0; i < size; i++) {
-            yi = j ? dst[i] : src[i];
-            ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
-            dst[i] = ry;
-
-            x[1] = x[0];
-            x[0] = yi;
-            y[1] = y[0];
-            y[0] = ry;
-        }
-    }
+inline static PyObject *alloc_err() {
+    return err_str("Error allocate memory");
 }
-#endif /* defined USE_ALL_FILTERS || defined USE_LO_FILTER */
 
 PyObject *band_filter(PyObject *self, PyObject *args) {
-    PyObject *data, *result = NULL;
-    PyObject *x, *y, *ry;
+    PyObject *data = NULL, *result = NULL;
+    PyObject *x = NULL, *y = NULL, *ry = NULL, *maximums = NULL;
     Py_ssize_t size;
 
     if (!PyArg_ParseTuple(args, "O!", &PyTuple_Type, &data))
@@ -144,49 +112,74 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
     float *yvec = (float *)PyMem_RawMalloc(sizeof(float) * size);
     if (!xvec || !yvec) {
         PyMem_RawFree(xvec ?: yvec);
-        return err_str("Error allocating memory");
+        return alloc_err();
     }
 
     Py_ssize_t i = 0;
     for (; i < size; i++)
         PyArg_Parse(PyTuple_GET_ITEM(y, i), "f", xvec + i);
 
-    float *ptr = yvec;
+#define HIG_FILTER 0
+#define LOW_FILTER 1
 
-#if defined USE_ALL_FILTERS || defined USE_LO_FILTER
-    band_filters_impl_lo(xvec, yvec, size);
-#endif
-#if defined USE_ALL_FILTERS
-    band_filters_impl_hi(yvec, xvec, size);
-#elif defined USE_HI_FILTER
-    band_filters_impl_hi(xvec, yvec, size);
-    ptr = xvec;
-#endif
+    float filters[2][5][FILTER_C_COUNT] = {
+        [HIG_FILTER] = {
+            /* High frequency filter */
+            { 9.869e-4, 9.867e-4, 9.865e-4, 9.864e-4, 9.863e-4 },
+            { 1.974e-3, 1.973e-3, 1.973e-3, 1.973e-3, 1.973e-3 },
+            { 9.869e-4, 9.867e-4, 9.865e-4, 9.864e-4, 9.863e-4 },
+            {-2.0e4,    -2.0e4,    -2.0e4,    -2.0e4,   -2.0e4 },
+            { 9.998e3,  9.994e3,  9.991e3,  9.989e3,   9.988e3 }
+        }, 
+        [LOW_FILTER] = {
+            /* Low frequency filter */
+            {  0.301f,  0.241f,  0.207f,  0.187f,  0.178f },
+            {  0.601f,  0.483f,  0.413f,  0.374f,  0.356f },
+            {  0.301f,  0.241f,  0.207f,  0.187f,  0.178f },
+            { -0.538f, -0.432f, -0.370f, -0.335f, -0.319f },
+            {  0.741f,  0.397f,  0.196f,  0.083f,  0.031f }
+        }
+    };
 
-    float *x_ptr = xvec == ptr ? yvec : xvec;
-    float dx = xvec[1] - xvec[0];
+    band_filters_impl(xvec, yvec, size, filters[LOW_FILTER]);
+    //band_filters_impl(yvec, xvec, size, filters[HIG_FILTER]);
+
+    float *y_ptr = yvec;
+    float *x_ptr = xvec;
 
     for (i = 0; i < size; i++)
         PyArg_Parse(PyTuple_GET_ITEM(x, i), "f", x_ptr + i);
 
-    differ(ptr, size, dx);
-    differ(ptr, size, dx);
-    sig_sqr(ptr, size);
-    size = integrate(ptr, x_ptr, size, dx);
+    float dx = x_ptr[1] - x_ptr[0];
+
+    differ(y_ptr, size, dx);
+    differ(y_ptr, size, dx);
+    sig_sqr(y_ptr, size);
+    size = integrate(y_ptr, x_ptr, size, dx);
+
+    maximums = PyTuple_New(size);
+    if (!maximums)
+        return alloc_err();
+    Py_ssize_t count = search_r_r(y_ptr, maximums, size);
+    _PyTuple_Resize(&maximums, count);
 
     _PyTuple_Resize(&x, size);
     ry = PyTuple_New(size);
     if (!ry)
-        return err_str("Error allocating memory");
+        return alloc_err();
 
-    result = PyTuple_New(2);
+    result = PyTuple_New(3);
     if (result) {
-        for (i = 0; i < size; i++) {
-            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", ptr[i]));
+        for (i = 0; i < size - 1; i++) {
+            PyTuple_SET_ITEM(ry, i, Py_BuildValue("f", y_ptr[i]));
             PyTuple_SET_ITEM(x, i, Py_BuildValue("f", x_ptr[i]));
         }
+        PyTuple_SET_ITEM(ry, size - 1, Py_BuildValue("f", y_ptr[size - 2]));
+        PyTuple_SET_ITEM(x, size - 1, Py_BuildValue("f", x_ptr[size - 2]));
+
         PyTuple_SET_ITEM(result, 0, Py_BuildValue("O", x));
         PyTuple_SET_ITEM(result, 1, Py_BuildValue("O", ry));
+        PyTuple_SET_ITEM(result, 2, Py_BuildValue("O", maximums));
     } else
         err_str("Error allocating memory");
 

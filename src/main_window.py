@@ -128,8 +128,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         data = self.__etalons_data[gr_text]
         if 'counted' not in data:
             gr = data['data']
-            data['counted'] = band_filter(gr)
-        self.ecg_graph_real.set_graph(data['counted'])
+            results = band_filter(gr)
+            data['counted'] = results[:-1]
+            data['points'] = results[2]
+        self.ecg_graph_real.set_graph(data['counted'], points = data['points'])
 
     def load_etalon_data(self, name):
         if not self.__etalons_data[name]['data']:
