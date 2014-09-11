@@ -2,8 +2,10 @@
 #include "algo.h"
 #include "algo_ex.h"
 
+// Модуль инициализации С библиотеки при старте программы
+
 static PyMethodDef module_methods[] = {
-    { "band_filter", (PyCFunction)band_filter, METH_VARARGS },
+    { "band_filter", (PyCFunction)band_filter, METH_VARARGS }, // Определение методов, доступных из питона
     { NULL, NULL }
 };
 
@@ -18,21 +20,24 @@ static int module_clear(PyObject *m) {
     return 0;
 }
 
-static struct PyModuleDef moduledef = {
+static struct PyModuleDef moduledef = { // Структура характеризует модуль С для питона (****)
     PyModuleDef_HEAD_INIT,
-    LIB_NAME,
+    LIB_NAME, // Имя модуля
     NULL,
     0,
-    module_methods,
+    module_methods, // Методы модуля
     NULL,
-    module_traverse,
-    module_clear,
+    module_traverse, // Ф-ия инициализации (ничего не делает)
+    module_clear, // Функция деинициализации
     NULL
 };
 
 PyObject *PyInit_algo() {
-    PyObject *module = PyModule_Create(&moduledef);
+    // Ф-ия вызывается при старте программы
 
+    PyObject *module = PyModule_Create(&moduledef); // Инициализация параметров модуля см (****)
+
+    // Обработка ошибок инициализации
     if (module == NULL)
         return NULL;
 
