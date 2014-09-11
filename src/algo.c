@@ -6,8 +6,8 @@
 #define EXP 10
 #define INTER_STEP 4
 
-//#define USE_ALL_FILTERS
-#define USE_LO_FILTER
+#define USE_ALL_FILTERS
+//#define USE_LO_FILTER
 //#define USE_HI_FILTER
 
 inline static PyObject *err_str(const char *msg) {
@@ -32,7 +32,19 @@ static void sig_sqr(float *signal, Py_ssize_t size) {
         *signal *= *signal;
 }
 
-static Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t size, float dx) {
+void moving_window(const float *signal, float *out, Py_ssize_t size) {
+    const int N = 90;
+    Py_ssize_t i = N;
+    int j = 0;
+
+    for (; i < size; i++) {
+        out[i] = 0.0f;
+        for (j = 0; j < N; j++) out[i] += signal[i - N + j];
+        out[i] /= (float)N;
+    }
+}
+
+Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t size, float dx) {
     Py_ssize_t i;
     const int step = INTER_STEP;
     int st = step;
@@ -157,15 +169,18 @@ PyObject *band_filter(PyObject *self, PyObject *args) {
 #endif
 
     float *x_ptr = xvec == ptr ? yvec : xvec;
-    float dx = xvec[1] - xvec[0];
-
     for (i = 0; i < size; i++)
         PyArg_Parse(PyTuple_GET_ITEM(x, i), "f", x_ptr + i);
 
-    differ(ptr, size, dx);
+    float dx = x_ptr[1] - x_ptr[0];
+
     differ(ptr, size, dx);
     sig_sqr(ptr, size);
-    size = integrate(ptr, x_ptr, size, dx);
+    moving_window(ptr, x_ptr, size);
+    memcpy(ptr, x_ptr, size * sizeof(*ptr));
+    for (i = 0; i < size; i++)
+        PyArg_Parse(PyTuple_GET_ITEM(x, i), "f", x_ptr + i);
+    //size = integrate(ptr, x_ptr, size, dx);
 
     _PyTuple_Resize(&x, size);
     ry = PyTuple_New(size);
