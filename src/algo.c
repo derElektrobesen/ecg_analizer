@@ -60,63 +60,32 @@ Py_ssize_t integrate(float *signal, float *x_coord, Py_ssize_t size, float dx) {
 
 #if defined USE_ALL_FILTERS || defined USE_HI_FILTER
 static void band_filters_impl_hi(const float *src, float *dst, Py_ssize_t size) {
-    float x[] = { 0.0f, 0.0f };
-    float y[] = { 0.0f, 0.0f };
-
-    float coefs[5][5] = {
-        { 9.705e-8f, 7.912e-8f, 5.012e-8f, 5.012e-8f, 3.187e-9f },
-        { 1.941e-7f, 1.582e-7f, 1.002e-7f, 1.002e-7f, 6.373e-9f },
-        { 9.705e-8f, 7.912e-8f, 5.012e-8f, 5.012e-8f, 3.187e-9f },
-        { -2.0f, -2.0f, -2.0f, -2.0f, -2.0f },
-        { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f },
-    };
-
-    Py_ssize_t i;
-    int j;
-    float yi, ry;
-
-    for (j = 0; j < EXP / 2; j++) {
-        for (i = 0; i < size; i++) {
-            yi = j ? dst[i] : src[i];
-            ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
-            dst[i] = ry;
-
-            x[1] = x[0];
-            x[0] = yi;
-            y[1] = y[0];
-            y[0] = ry;
-        }
+    Py_ssize_t i = 1;
+    *dst = *src;
+    for (; i < size; i++) {
+        dst[i] = dst[i - 1] - src[i] / 32;
+        if (i > 15)
+            dst[i] += src[i - 16];
+        if (i > 16)
+            dst[i] -= src[i - 17];
+        if (i > 31)
+            dst[i] += src[i - 32] / 32;
     }
 }
 #endif /* defined USE_ALL_FILTERS || defined USE_HI_FILTER */
 
 #if defined USE_ALL_FILTERS || defined USE_LO_FILTER
 static void band_filters_impl_lo(const float *src, float *dst, Py_ssize_t size) {
-    float x[] = { 0.0f, 0.0f };
-    float y[] = { 0.0f, 0.0f };
-
-    float coefs[5][5] = {
-        {  0.301f,  0.241f,  0.207f,  0.187f,  0.178f },
-        {  0.601f,  0.483f,  0.413f,  0.374f,  0.356f },
-        {  0.301f,  0.241f,  0.207f,  0.187f,  0.178f },
-        { -0.538f, -0.432f, -0.370f, -0.335f, -0.319f },
-        {  0.741f,  0.397f,  0.196f,  0.083f,  0.031f }
-    };
-
-    Py_ssize_t i;
-    int j;
-    float yi, ry;
-
-    for (j = 0; j < EXP / 2; j++) {
-        for (i = 0; i < size; i++) {
-            yi = j ? dst[i] : src[i];
-            ry = coefs[0][j] * yi + coefs[1][j] * x[0] + coefs[2][j] * x[1] - coefs[3][j] * y[0] - coefs[4][j] * y[1];
-            dst[i] = ry;
-
-            x[1] = x[0];
-            x[0] = yi;
-            y[1] = y[0];
-            y[0] = ry;
+    Py_ssize_t i = 0;
+    for (; i < size; i++) {
+        if (i < 2)
+            dst[i] = src[i];
+        else {
+            dst[i] = 2 * dst[i - 1] - dst[i - 2] + src[i] / 32;
+            if (i > 5)
+                dst[i] -= src[i - 6] / 16;
+            if (i > 11)
+                dst[i] += src[i - 12] / 32;
         }
     }
 }
